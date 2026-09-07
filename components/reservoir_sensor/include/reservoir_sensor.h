@@ -1,8 +1,8 @@
 #ifndef __RESERVOIR_SENSOR_H__
 #define __RESERVOIR_SENSOR_H__
 
-#include <driver/gpio.h>
-#include <esp32c3/rom/ets_sys.h>
+#include <esp_err.h>
+#include <stdint.h>
 
 #define TAG "reservoir_sensor"
 
@@ -12,8 +12,8 @@
 
 typedef struct 
 {
-  gpio_num_t trigger_pin;
-  gpio_num_t echo_pin;
+  int trigger_pin;
+  int echo_pin;
   uint32_t res_depth_cm;
 } reservoir_sensor_t;
 
@@ -56,7 +56,7 @@ esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_time_us, uin
  *           - ::ESP_ERR_ULTRASONIC_PING_TIMEOUT - Device not responding
  *           - ::ESP_ERR_ULTRASONIC_ECHO_TIMEOUT - Distance too large or wave is scattered
  */
-esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_time_us, uint32_t *time_us);
+esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_distance, uint32_t *distance);
 
 
 /**

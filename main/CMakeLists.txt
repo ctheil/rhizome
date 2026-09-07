@@ -1,5 +1,5 @@
 idf_component_register(SRCS "main.c"
                        PRIV_REQUIRES spi_flash
                        INCLUDE_DIRS "."
-                       REQUIRES moisture_sensor reservoir_sensor
+                       REQUIRES moisture_sensor reservoir_sensor pump
                        )

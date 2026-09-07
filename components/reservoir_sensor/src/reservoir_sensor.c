@@ -59,6 +59,7 @@ esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_distance, ui
     rs_measure_raw(dev, max_distance * ROUNDTRIP_CM, &time_us);
 
     *distance = time_us / ROUNDTRIP_CM;
+    if (*distance > max_distance) return ESP_ERR_RS_ECHO_TIMEOUT;
 
     return ESP_OK;
 }

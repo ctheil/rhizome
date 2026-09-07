@@ -1,3 +1,3 @@
 idf_component_register(SRCS "src/reservoir_sensor.c"
-                       PRIV_REQUIRES driver esp_timer
+                       PRIV_REQUIRES esp_driver_gpio esp_timer
                        INCLUDE_DIRS "include")
