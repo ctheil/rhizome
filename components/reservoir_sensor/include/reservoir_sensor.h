@@ -18,6 +18,7 @@ typedef struct
 } reservoir_sensor_t;
 
 esp_err_t rs_init(const reservoir_sensor_t *dev);
+uint8_t rs_test(const reservoir_sensor_t *dev);
 
 /**
  * @brief  Measure time between ping and echo
@@ -43,7 +44,20 @@ esp_err_t rs_measure_raw(const reservoir_sensor_t *dev, uint32_t max_time_us, ui
  *           - ::ESP_ERR_ULTRASONIC_PING_TIMEOUT - Device not responding
  *           - ::ESP_ERR_ULTRASONIC_ECHO_TIMEOUT - Distance too large or wave is scattered
  */
-esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_time_us, uint32_t *time_us);
+esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_distance, uint32_t *distance_cm);
+
+/**
+ * @brief  Measure mm
+ * 
+ * @param dev  Pointer to the device
+ * @param max_time_us Max time to wait for echo
+ * @param time_us Time, us
+ * @return `ESP_OK` on success; otherwise: 
+ *           - ::ESP_ERR_ULTRASONIC_PING         - Invalid state (prev ping is not ended)
+ *           - ::ESP_ERR_ULTRASONIC_PING_TIMEOUT - Device not responding
+ *           - ::ESP_ERR_ULTRASONIC_ECHO_TIMEOUT - Distance too large or wave is scattered
+ */
+esp_err_t rs_measure_mm(const reservoir_sensor_t *dev, uint32_t max_distance, uint32_t *distance_mm);
 
 /**
  * @brief  Measure cm

@@ -8,6 +8,7 @@
 #define TRIGGER_HIGH_DELAY 10
 #define PING_TIMEOUT 6000
 #define ROUNDTRIP_CM 58
+#define ROUNDTRIP_MM 5.8
 #define timeout_expired(start, len) ((esp_timer_get_time() - (start)) >= (len))
 
 
@@ -20,6 +21,41 @@ esp_err_t rs_init(const reservoir_sensor_t *dev)
 
   return gpio_set_level(dev->trigger_pin, 0);
 }
+
+uint8_t rs_test(const reservoir_sensor_t *dev) 
+{
+  uint8_t errors= 0;
+  esp_err_t ret; 
+    uint32_t result;
+  uint32_t timeout_tests[5] = {100, 500, 1000, 2000, 5999};
+  for (int i = 0; i < 5; i++) {
+    ret = rs_measure_raw(dev, timeout_tests[i], &result);
+     if (ret != ESP_OK) {
+      switch (ret) {
+          case ESP_ERR_RS_ECHO_TIMEOUT: 
+              ESP_LOGE(TAG, "RS ERR: echo timeout");
+              break;
+          case ESP_ERR_RS_PING_TIMEOUT: 
+              ESP_LOGE(TAG, "RS ERR: ping timeout");
+              break;
+          case ESP_ERR_RS_PING: 
+              ESP_LOGE(TAG, "RS ERR: ping err");
+              break;
+          default: 
+              ESP_LOGE(TAG, "unknown error");
+              break;
+      }
+      ESP_LOGE(TAG, "rs_test failed: measure raw returned not ok");
+      errors++;
+    }
+    if (result > timeout_tests[i]) {
+      ESP_LOGE(TAG, "rs_test failed: result is greater than timeout");
+      errors++;
+    }
+  }
+  return errors;
+}
+
 esp_err_t rs_measure_raw(const reservoir_sensor_t *dev, uint32_t max_time_us, uint32_t *time_us) {
   if (!(dev) || !(time_us)) {return ESP_ERR_INVALID_ARG;}
 
@@ -27,6 +63,7 @@ esp_err_t rs_measure_raw(const reservoir_sensor_t *dev, uint32_t max_time_us, ui
   ets_delay_us(TRIGGER_LOW_DELAY);
   gpio_set_level(dev->trigger_pin, 1);
   ets_delay_us(TRIGGER_HIGH_DELAY);
+  gpio_set_level(dev->trigger_pin, 0);
 
   if (gpio_get_level(dev->echo_pin)) return ESP_ERR_RS_PING;
 
@@ -47,6 +84,8 @@ esp_err_t rs_measure_raw(const reservoir_sensor_t *dev, uint32_t max_time_us, ui
   }
 
   *time_us = time - echo_start;
+  if (*time_us > max_time_us) 
+      return ESP_ERR_RS_ECHO_TIMEOUT;
 
   return ESP_OK;
 }
@@ -59,6 +98,18 @@ esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_distance, ui
     rs_measure_raw(dev, max_distance * ROUNDTRIP_CM, &time_us);
 
     *distance = time_us / ROUNDTRIP_CM;
+    if (*distance > max_distance) return ESP_ERR_RS_ECHO_TIMEOUT;
+
+    return ESP_OK;
+}
+esp_err_t rs_measure_mm(const reservoir_sensor_t *dev, uint32_t max_distance, uint32_t *distance) 
+{
+  if (!(dev) || !(distance)) return ESP_ERR_INVALID_ARG;
+
+    uint32_t time_us;
+    rs_measure_raw(dev, (uint32_t)max_distance * ROUNDTRIP_MM, &time_us);
+
+    *distance = (float)time_us / ROUNDTRIP_MM;
     if (*distance > max_distance) return ESP_ERR_RS_ECHO_TIMEOUT;
 
     return ESP_OK;

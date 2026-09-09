@@ -25,18 +25,10 @@ void app_main(void)
     if (ret != ESP_OK) return;
 
     while (1) {
-        // TEST MOSFET
-        
         pump_drive(&pump, DIR_FORWARD, 255);
-        // vTaskDelay(pdMS_TO_TICKS(4000));
 
-        // pump_off(&pump);
-        // vTaskDelay(pdMS_TO_TICKS(4000));
-
-        uint8_t res_perc;
-        esp_err_t ret = rs_get_res_fill_percent(&reservoir_sensor, &res_perc);
-        uint32_t distance;
-        rs_measure_cm(&reservoir_sensor, reservoir_sensor.res_depth_cm, &distance);
+        uint32_t distance_mm;
+        ret = rs_measure_mm(&reservoir_sensor, 300, &distance_mm);
         if (ret != ESP_OK) {
                     ESP_LOGE("main", "failed to get rs measurement");
             switch (ret) {
@@ -56,8 +48,9 @@ void app_main(void)
             }
             ESP_LOGE("main", "failed to get rs measurement");
         } else {
-            ESP_LOGI("main", "distance to water: %ucm", distance );
-            ESP_LOGI("main", "reservoir is %d%% full", res_perc );
+            ESP_LOGI("main", "distance to water: %umm", distance_mm );
+            uint32_t distance_from_top_of_res = (reservoir_sensor.res_depth_cm * 10) - distance_mm;
+            ESP_LOGI("main", "distance from top: %umm", distance_from_top_of_res );
         }
         vTaskDelay(pdMS_TO_TICKS(500));
     }

@@ -5,12 +5,6 @@
 #include <driver/gpio.h>
 #include "esp_log.h"
 
-esp_err_t pump_mosfet_set_level(pump_t *pump, uint8_t level) 
-{
-  if (!(pump)) return ESP_ERR_INVALID_ARG;
-
-  return gpio_set_level(pump->mosfet_pin, level);
-}
 
 esp_err_t pump_drive(pump_t *pump, direction_t dir, uint8_t speed) 
 {
@@ -25,7 +19,7 @@ esp_err_t pump_drive(pump_t *pump, direction_t dir, uint8_t speed)
 
   gpio_set_level(pump->ain1, a1_level);
   gpio_set_level(pump->ain2, a2_level);
-  pump_mosfet_set_level(pump, 1);
+  gpio_set_level(pump->mosfet_pin, 1);
   return ESP_OK;
 }
 
@@ -33,9 +27,10 @@ esp_err_t pump_off(pump_t *pump)
 {
   if (!(pump)) return ESP_ERR_INVALID_ARG;
 
-  pump_mosfet_set_level(pump, 0);
+  gpio_set_level(pump->mosfet_pin, 0);
+  gpio_set_level(pump->ain1, 0);
+  gpio_set_level(pump->ain2, 0);
   return ESP_OK;
-
 }
 
 esp_err_t pump_init(pump_t *pump) 

@@ -20,7 +20,7 @@
     }
   },
   "idf.openOcdConfigs": ["board/esp32c3-builtin.cfg"],
-  "idf.port": "/dev/tty.usbmodem111101",
+  "idf.port": "/dev/tty.usbmodem2101",
   "idf.currentSetup": "/Users/caleb/.espressif/v6.0.1/esp-idf",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32c3"
@@ -31,5 +31,6 @@
     "--query-driver=**",
     "--compile-commands-dir=/Users/caleb/dev/esys/rhizome/build"
   ],
-  "idf.flashType": "JTAG"
+  "idf.flashType": "UART",
+  "idf.monitorPort": "/dev/tty.usbmodem2101"
 }
