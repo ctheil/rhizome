@@ -7,6 +7,7 @@
 #include "pump.h"
 #include "reservoir_sensor.h"
 
+
 void app_main(void)
 {
     reservoir_sensor_t reservoir_sensor = {
@@ -16,16 +17,17 @@ void app_main(void)
     };
     rs_init(&reservoir_sensor);
 
-    pump_t pump = {
-        .ain1 =8,
-        .ain2 = 9,
+    channel_runtime_t pump = {
+        .in1_pin =8,
+        .in2_pin = 9,
         .mosfet_pin = 10,
     };
-    esp_err_t ret = pump_init(&pump);
+    channel_runtime_t *pumps[1] = {&pump};
+    esp_err_t ret = pump_init(pumps, 1);
+
     if (ret != ESP_OK) return;
 
     while (1) {
-        pump_drive(&pump, DIR_FORWARD, 255);
 
         uint32_t distance_mm;
         ret = rs_measure_mm(&reservoir_sensor, 300, &distance_mm);
