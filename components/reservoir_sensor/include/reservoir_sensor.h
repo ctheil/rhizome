@@ -17,7 +17,24 @@ typedef struct
   uint32_t res_depth_cm;
 } reservoir_sensor_t;
 
-esp_err_t rs_init(const reservoir_sensor_t *dev);
+extern reservoir_sensor_t *ONBOARD_RESERVOIR_SENSOR;
+
+typedef enum {
+  RS_FAULT_NONE, 
+  RS_FAULT_UNKNOWN,
+  RS_FAULT_PING_TIMEOUT,
+  RS_FAULT_PING, 
+  RS_FAULT_ECHO_TIMEOUT,
+} reservoir_fault_reason_t;
+typedef struct {
+  uint32_t raw_response_time;
+  uint32_t distance_cm;
+  uint32_t reservoir_depth_cm; 
+  bool is_empty;
+  reservoir_fault_reason_t fault;
+} reservoir_status_t;
+
+esp_err_t rs_init(reservoir_sensor_t *dev);
 uint8_t rs_test(const reservoir_sensor_t *dev);
 
 /**
@@ -84,6 +101,9 @@ esp_err_t rs_measure_cm(const reservoir_sensor_t *dev, uint32_t max_distance, ui
  *           - ::ESP_ERR_ULTRASONIC_ECHO_TIMEOUT - Distance too large or wave is scattered
  */
 esp_err_t rs_get_res_fill_percent(const reservoir_sensor_t *dev, uint8_t *percent);
+
+
+void reservoir_get_status(reservoir_status_t *status);
 
 
 

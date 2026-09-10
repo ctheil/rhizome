@@ -11,10 +11,13 @@
 #define ROUNDTRIP_MM 5.8
 #define timeout_expired(start, len) ((esp_timer_get_time() - (start)) >= (len))
 
+reservoir_sensor_t *ONBOARD_RESERVOIR_SENSOR= NULL;
 
-esp_err_t rs_init(const reservoir_sensor_t *dev) 
+
+esp_err_t rs_init(reservoir_sensor_t *dev) 
 {
   if (!(dev)) {return ESP_ERR_INVALID_ARG;}
+  ONBOARD_RESERVOIR_SENSOR = dev;
 
   gpio_set_direction(dev->trigger_pin, GPIO_MODE_OUTPUT);
   gpio_set_direction(dev->echo_pin, GPIO_MODE_INPUT);
@@ -127,4 +130,43 @@ esp_err_t rs_get_res_fill_percent(const reservoir_sensor_t *dev, uint8_t *percen
   *percent = 100 - (empty_percent * 100);
 
   return ESP_OK;
+}
+
+void reservoir_get_status(reservoir_status_t *status) 
+{
+  if (!(ONBOARD_RESERVOIR_SENSOR)) {
+    ESP_LOGE(TAG, "ERR NOT IMPLEMENTED. no onboard sensor initalized. cannot get reservoir status until MQTT client is connected. ");
+    return;
+  }
+
+  uint32_t time_us;
+  esp_err_t ret = rs_measure_raw(ONBOARD_RESERVOIR_SENSOR, ONBOARD_RESERVOIR_SENSOR->res_depth_cm * ROUNDTRIP_CM, &time_us);
+  if (ret != ESP_OK) {
+    switch (ret) {
+        case ESP_ERR_RS_ECHO_TIMEOUT: 
+            ESP_LOGE(TAG, "RS ERR: echo timeout");
+            status->fault = RS_FAULT_ECHO_TIMEOUT;
+            break;
+        case ESP_ERR_RS_PING_TIMEOUT: 
+            ESP_LOGE(TAG, "RS ERR: ping timeout");
+            status->fault = RS_FAULT_PING_TIMEOUT;
+            break;
+        case ESP_ERR_RS_PING: 
+            ESP_LOGE(TAG, "RS ERR: ping err");
+            status->fault = RS_FAULT_PING;
+            break;
+        default: 
+            ESP_LOGE(TAG, "unknown error");
+            status->fault = RS_FAULT_UNKNOWN;
+            break;
+    }
+  } else {
+    status->fault = RS_FAULT_NONE;
+  }
+  status->raw_response_time = time_us;
+  status->distance_cm = time_us / ROUNDTRIP_CM;
+  status->reservoir_depth_cm = ONBOARD_RESERVOIR_SENSOR->res_depth_cm;
+
+  if (status->distance_cm <= (status->reservoir_depth_cm - 5)) {status->is_empty = true;}
+  else {status->is_empty = false;}
 }

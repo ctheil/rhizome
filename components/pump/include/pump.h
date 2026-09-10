@@ -12,16 +12,17 @@ typedef enum {
   FAULT_NONE,
   FAULT_UNKNOWN,
   FAULT_RESERVOIR_DRY, 
+  FAULT_RESERVOIR_FAULT,
   FAULT_PUMP_WITHOUT_EFFECT,
   FAULT_SENSOR_OUT_OF_RANGE,
-} fault_reason_t;
+} pump_fault_reason_t;
 typedef struct {
     pump_state_t state;
     uint64_t start_time_ms;
     uint32_t pre_water_moisture;   // for pump-without-effect detection
     bool override_active;
     uint64_t override_expiry_ms;
-    fault_reason_t fault;
+    pump_fault_reason_t fault;
 
     uint8_t mosfet_pin;
     uint8_t in1_pin;
@@ -53,11 +54,9 @@ typedef enum {
   DIR_REVERSE
 } direction_t;
 
-static QueueHandle_t msg_queue;
-static const uint8_t msg_queue_len = 10;
 
-static channel_runtime_t **PUMP_CHANNELS;
-static uint8_t NUM_CHANNELS;
+extern channel_runtime_t **PUMP_CHANNELS;
+extern uint8_t NUM_CHANNELS;
 
 esp_err_t pump_init(channel_runtime_t **pumps_arr, uint8_t size);
 

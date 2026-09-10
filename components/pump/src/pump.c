@@ -4,8 +4,23 @@
 #include "freertos/task.h"
 #include <driver/gpio.h>
 #include "esp_log.h"
+#include "reservoir_sensor.h"
 
 
+channel_runtime_t **PUMP_CHANNELS = NULL;
+uint8_t NUM_CHANNELS = 0;
+
+static QueueHandle_t msg_queue;
+static const uint8_t msg_queue_len = 4;
+
+
+static void all_pumps_off(pump_fault_reason_t fault_reason) {
+      for (uint8_t i = 0; i < NUM_CHANNELS; i++) {
+        pump_off(PUMP_CHANNELS[i]);
+        PUMP_CHANNELS[i]->fault = fault_reason;
+        // fallback and turn off via gpio manually?
+      }
+}
 static void vPumpControlTask(void *arg) {
   pump_queue_msg_t msg; // queue item
   int to_wait_ms = 1000;
@@ -20,6 +35,7 @@ static void vPumpControlTask(void *arg) {
         continue;
       }
       channel_runtime_t *pump = PUMP_CHANNELS[msg.ch];
+      if (pump->fault != FAULT_NONE) continue; // how to handle better? Exit 1?
       if (msg.power_mode == 0) {
         ESP_LOGI(PUMP_TAG, "received pump stop command");
         esp_err_t ret = pump_off(pump);
@@ -44,6 +60,30 @@ static void vPumpControlTask(void *arg) {
       }
     }
 
+    reservoir_status_t rs_status;
+    reservoir_get_status(&rs_status);
+    if (rs_status.fault != RS_FAULT_NONE) {
+      switch (rs_status.fault) {
+        case RS_FAULT_ECHO_TIMEOUT:
+          ESP_LOGE(TAG, "reservoir fault echo timeout");
+          break;
+        case RS_FAULT_PING_TIMEOUT:
+          ESP_LOGE(TAG, "reservoir fault ping timeout");
+          break;
+        case RS_FAULT_PING:
+          ESP_LOGE(TAG, "reservoir fault ping error");
+          break;
+        default:
+          ESP_LOGE(TAG, "reservoir fault unknown");
+          break;
+      }
+      // TURN ALL PUMPS OFF
+      all_pumps_off(FAULT_RESERVOIR_FAULT);
+    }
+    if (rs_status.is_empty) {
+      all_pumps_off(FAULT_RESERVOIR_DRY);
+    }
+    // poll moisture sensor per channel (one per pump) for adequate moisture given the channel's profile
     // check for fault/stop 
 
     vTaskDelay(pdMS_TO_TICKS(to_wait_ms));
@@ -86,7 +126,7 @@ esp_err_t pump_init(channel_runtime_t **pumps_arr, uint8_t size)
 {
   if (!(pumps_arr)) return ESP_ERR_INVALID_ARG;
 
-  msg_queue = xQueueCreate(4, sizeof(pump_queue_msg_t));
+  msg_queue = xQueueCreate(msg_queue_len, sizeof(pump_queue_msg_t));
   if (msg_queue != NULL) {
     xTaskCreate(vPumpControlTask, "pump_control_task", 2048, NULL, 0, NULL);
   }
