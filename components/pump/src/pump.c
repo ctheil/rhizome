@@ -136,13 +136,18 @@ esp_err_t pump_init(channel_runtime_t **pumps_arr, uint8_t size)
   }
 
   NUM_CHANNELS = size;
-  *PUMP_CHANNELS = malloc(sizeof(channel_runtime_t) * NUM_CHANNELS);
+  PUMP_CHANNELS = malloc(sizeof(channel_runtime_t) * NUM_CHANNELS);
+  if (PUMP_CHANNELS == NULL) {
+    ESP_LOGE(TAG, "failed to allocate pump channels array memory");
+    return ESP_FAIL;
+  }
 
   for (uint8_t i = 0; i < size; i++) {
-    PUMP_CHANNELS[i] = pumps_arr[i];
+    channel_runtime_t *curr = pumps_arr[i];
+    PUMP_CHANNELS[i] = curr;
 
   gpio_config_t mosfet_conf = {
-        .pin_bit_mask = (1ULL << pumps_arr[i]->mosfet_pin),
+        .pin_bit_mask = (1ULL << curr->mosfet_pin),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -151,7 +156,7 @@ esp_err_t pump_init(channel_runtime_t **pumps_arr, uint8_t size)
   gpio_config(&mosfet_conf);
 
   gpio_config_t in1_conf = {
-        .pin_bit_mask = (1ULL << pumps_arr[i]->in1_pin),
+        .pin_bit_mask = (1ULL << curr->in1_pin),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -160,7 +165,7 @@ esp_err_t pump_init(channel_runtime_t **pumps_arr, uint8_t size)
   gpio_config(&in1_conf);
 
   gpio_config_t in2_conf = {
-        .pin_bit_mask = (1ULL << pumps_arr[i]->in2_pin),
+        .pin_bit_mask = (1ULL << curr->in2_pin),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
