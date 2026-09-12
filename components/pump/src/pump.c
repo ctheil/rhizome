@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "reservoir_sensor.h"
 
+#define TAG "pump"
+
 
 channel_runtime_t **PUMP_CHANNELS = NULL;
 uint8_t NUM_CHANNELS = 0;
@@ -21,34 +23,36 @@ static void all_pumps_off(pump_fault_reason_t fault_reason) {
         // fallback and turn off via gpio manually?
       }
 }
-static void vPumpControlTask(void *arg) {
+
+static void vPumpControlTask(void *arg) 
+{
   pump_queue_msg_t msg; // queue item
   int to_wait_ms = 1000;
   const TickType_t xTicksToWait = pdMS_TO_TICKS(to_wait_ms);
 
   while (1) {
-    ESP_LOGI(PUMP_TAG, "running pump control task");
+    ESP_LOGI(TAG, "running pump control task");
     if (xQueueReceive(msg_queue, (void *)&msg, xTicksToWait) == pdTRUE) {
-      ESP_LOGI(PUMP_TAG, "received msg = %d", msg);
+      ESP_LOGI(TAG, "received msg = %d", msg);
       if (msg.ch >= NUM_CHANNELS) {
-        ESP_LOGE(PUMP_TAG, "requested channel is OOB");
+        ESP_LOGE(TAG, "requested channel is OOB");
         continue;
       }
       channel_runtime_t *pump = PUMP_CHANNELS[msg.ch];
       if (pump->fault != FAULT_NONE) continue; // how to handle better? Exit 1?
       if (msg.power_mode == 0) {
-        ESP_LOGI(PUMP_TAG, "received pump stop command");
+        ESP_LOGI(TAG, "received pump stop command");
         esp_err_t ret = pump_off(pump);
         if (ret != ESP_OK) {
-          ESP_LOGE(PUMP_TAG, "failed to stop pump");
+          ESP_LOGE(TAG, "failed to stop pump");
           pump->fault = FAULT_UNKNOWN;
           continue;
         }
         pump->fault = FAULT_NONE;
       } else if (msg.power_mode == 1) {
-        ESP_LOGI(PUMP_TAG, "received pump start command");
+        ESP_LOGI(TAG, "received pump start command");
         if (msg.timeout_ms < 1) {
-          ESP_LOGE(PUMP_TAG, "timeout cannot be less than 1");
+          ESP_LOGE(TAG, "timeout cannot be less than 1");
           continue;
         }
 

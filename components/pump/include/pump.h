@@ -5,7 +5,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define PUMP_TAG "pump"
 
 typedef enum { PUMP_IDLE, PUMP_WATERING, PUMP_FAULT } pump_state_t;
 typedef enum {

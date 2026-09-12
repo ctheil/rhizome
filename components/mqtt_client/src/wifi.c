@@ -1,0 +1,177 @@
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+
+#include "lwip/err.h"
+#include "lwip/sys.h"
+#include "wifi.h"
+#include "nvs_flash.h"
+
+#define MAX_RETRY 10
+#define TAG "wifi"
+static int s_retry_num = 0; 
+static EventGroupHandle_t s_wifi_event_group;
+static esp_netif_t *wifi_netif = NULL;
+static esp_event_handler_instance_t ip_event_handler;
+static esp_event_handler_instance_t wifi_event_handler;
+
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
+static void ip_event_cb(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) 
+{
+  ESP_LOGI(TAG, "handling ip event, event code 0x%", PRIx32, event_id);
+  switch (event_id) {
+    case (IP_EVENT_STA_GOT_IP): 
+      ip_event_got_ip_t *event_ip = (ip_event_got_ip_t *)event_data; 
+      ESP_LOGI(TAG, "got Ip: ", IPSTR, IP2STR(&event_ip->ip_info.ip));
+      s_retry_num = 0;
+      xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+      break;
+    case (IP_EVENT_STA_LOST_IP): 
+      ESP_LOGI(TAG, "lost ip");
+      break;
+    case (IP_EVENT_GOT_IP6): 
+      ip_event_got_ip6_t *event_ip6 = (ip_event_got_ip6_t *)event_data;
+      ESP_LOGI(TAG, "got ipv6: ", IPV6STR, IPV62STR(event_ip6->ip6_info.ip));
+      s_retry_num = 0;
+      xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+      break;
+    default: 
+      ESP_LOGI(TAG, "ip event not handled");
+      break;
+  }
+}
+
+static void wifi_event_cb(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) 
+{
+  ESP_LOGI(TAG, "handling wifi event, event code 0x%", PRIx32, event_id);
+
+  switch (event_id) 
+  {
+    case (WIFI_EVENT_WIFI_READY): 
+      ESP_LOGI(TAG, "wifi ready");
+      break;
+    case (WIFI_EVENT_SCAN_DONE): 
+      ESP_LOGI(TAG, "wifi scan done");
+      break;
+    case (WIFI_EVENT_STA_START): 
+      ESP_LOGI(TAG, "wifi started, connecting to ap...");
+      esp_wifi_connect();
+      break;
+    case (WIFI_EVENT_STA_STOP): 
+      ESP_LOGI(TAG, "wifi stopped");
+      break;
+    case (WIFI_EVENT_STA_CONNECTED): 
+      ESP_LOGI(TAG, "wifi connected");
+      break;
+    case (WIFI_EVENT_STA_DISCONNECTED): 
+      ESP_LOGI(TAG, "wifi disconnected");
+      if (s_retry_num < MAX_RETRY) {
+        ESP_LOGI(TAG, "retrying to connect to wifi...");
+        esp_wifi_connect();
+        s_retry_num++;
+      } else {
+        ESP_LOGI(TAG, "failed to connect to wifi network");
+        xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+      }
+      break;
+    case (WIFI_EVENT_STA_AUTHMODE_CHANGE): 
+      ESP_LOGI(TAG, "wifi authmode changed");
+      break;
+    default:
+      ESP_LOGI(TAG, "wifi event not handled");
+      break;
+  }
+}
+esp_err_t wifi_init() 
+{
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    s_wifi_event_group = xEventGroupCreate();
+
+    ret = esp_netif_init();
+    if (ret != ESP_OK) {
+      ESP_LOGE(TAG, "failed to init TCP/IP network stack");
+      return ret;
+    }
+
+    ret = esp_event_loop_create_default();
+    if (ret != ESP_OK) {
+      ESP_LOGE(TAG, "failed to created default event loop");
+      return ret;
+    }
+
+    ret = esp_wifi_set_default_wifi_sta_handlers();
+    if (ret != ESP_OK) {
+      ESP_LOGE(TAG, "failed to set default handlers");
+      return ret;
+    }
+
+    wifi_netif = esp_netif_create_default_wifi_sta();
+    if (wifi_netif == NULL) {
+      ESP_LOGE(TAG, "failed to create default WiFi STA interface");
+      return ESP_FAIL;
+    }
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(
+      WIFI_EVENT,
+      ESP_EVENT_ANY_ID, 
+      &wifi_event_cb,
+      NULL,
+      &wifi_event_handler));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(
+      IP_EVENT,
+      ESP_EVENT_ANY_ID, 
+      &ip_event_cb,
+      NULL,
+      &ip_event_handler));
+
+      return ret;
+
+}
+
+esp_err_t wifi_connect(char* wifi_ssid, char* wifi_password) 
+{
+  wifi_config_t wifi_config = {
+    .sta = {
+      .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+    }
+  };
+
+  strncpy((char*)wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
+  strncpy((char*)wifi_config.sta.password, wifi_password, sizeof(wifi_config.sta.password));
+
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+  ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+
+  ESP_LOGI(TAG, "connecting to wifi network: %s, pass: %s", wifi_config.sta.ssid, wifi_config.sta.password);
+  ESP_ERROR_CHECK(esp_wifi_start());
+
+  EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+
+  if (bits & WIFI_CONNECTED_BIT) {
+    ESP_LOGI(TAG, "wifi connected");
+    return ESP_OK;
+  } else if (bits & WIFI_FAIL_BIT) {
+    ESP_LOGE(TAG, "failed to connect to network");
+    return ESP_FAIL;
+  }
+
+  ESP_LOGE(TAG, "unexpected wifi error");
+  return ESP_FAIL;
+}

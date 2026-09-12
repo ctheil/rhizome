@@ -4,7 +4,6 @@
 #include <esp_err.h>
 #include <stdint.h>
 
-#define TAG "reservoir_sensor"
 
 #define ESP_ERR_RS_PING 0x200
 #define ESP_ERR_RS_PING_TIMEOUT 0x201

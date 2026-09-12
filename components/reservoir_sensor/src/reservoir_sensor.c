@@ -4,6 +4,8 @@
 #include <esp32c3/rom/ets_sys.h>
 #include <esp_timer.h>
 
+#define TAG "reservoir_sensor"
+
 #define TRIGGER_LOW_DELAY 4
 #define TRIGGER_HIGH_DELAY 10
 #define PING_TIMEOUT 6000
