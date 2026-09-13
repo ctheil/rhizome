@@ -91,14 +91,9 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base, int32_t event_
 }
 esp_err_t wifi_init() 
 {
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
     s_wifi_event_group = xEventGroupCreate();
 
-    ret = esp_netif_init();
+    esp_err_t ret = esp_netif_init();
     if (ret != ESP_OK) {
       ESP_LOGE(TAG, "failed to init TCP/IP network stack");
       return ret;

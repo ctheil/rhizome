@@ -1,4 +1,5 @@
 
+#include "app_config.h"
 #include "esp_log.h"
 #include "esp_log_level.h"
 // #include "moisture_sensor.h"
@@ -7,37 +8,58 @@
 #include "pump.h"
 #include "reservoir_sensor.h"
 #include "wifi.h"
+#include "nvs_flash.h"
+#include "app_config.h"
 
 #define TAG "main"
 
 
 void app_main(void)
 {
+    // init NVS
+    ESP_LOGI(TAG, "initializing NVS");
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    config_t app_cfg;
+    ret = get_config(&app_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to get config...");
+        return;
+    }
+
     ESP_LOGI(TAG, "initializing wifi");
     ESP_ERROR_CHECK(wifi_init());
-    esp_err_t ret = wifi_connect("Brickhouse", "Br1ckHous3");
+    ret = wifi_connect(app_cfg.wifi_ssid, app_cfg.wifi_password);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to initialize wifi...");
         return;
     }
 
+    if (app_cfg.reservoir.enabled) {
+
     ESP_LOGI(TAG, "initializing reservoir sensor");
     reservoir_sensor_t reservoir_sensor = {
-        .trigger_pin = 20,
-        .echo_pin = 21,
-        .res_depth_cm = 22
+        .trigger_pin = app_cfg.reservoir.trigger_pin,
+        .echo_pin = app_cfg.reservoir.echo_pin,
+        .res_depth_cm = app_cfg.reservoir.reservoir_depth_cm
     };
     ret = rs_init(&reservoir_sensor);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to initialize reservoir sensor...");
         return;
     }
+    }
 
     ESP_LOGI(TAG, "initializing pump");
     channel_runtime_t pump = {
-        .in1_pin =8,
-        .in2_pin = 9,
-        .mosfet_pin = 10,
+        .in1_pin =app_cfg.channels[0].pump_in1_pin,
+        .in2_pin = app_cfg.channels[0].pump_in2_pin,
+        .mosfet_pin = app_cfg.mosfet_pin,
     };
     channel_runtime_t *pumps[1] = {&pump};
     ret = pump_init(pumps, 1);
