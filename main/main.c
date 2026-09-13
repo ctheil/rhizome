@@ -1,5 +1,6 @@
 
 #include "app_config.h"
+#include "channel_control.h"
 #include "esp_log.h"
 #include "esp_log_level.h"
 // #include "moisture_sensor.h"
@@ -10,6 +11,7 @@
 #include "wifi.h"
 #include "nvs_flash.h"
 #include "app_config.h"
+#include "stdlib.h"
 
 #define TAG "main"
 
@@ -55,18 +57,20 @@ void app_main(void)
     }
     }
 
-    ESP_LOGI(TAG, "initializing pump");
-    channel_runtime_t pump = {
-        .in1_pin =app_cfg.channels[0].pump_in1_pin,
-        .in2_pin = app_cfg.channels[0].pump_in2_pin,
-        .mosfet_pin = app_cfg.mosfet_pin,
-    };
-    channel_runtime_t *pumps[1] = {&pump};
-    ret = pump_init(pumps, 1);
-    if (ret != ESP_OK){
-        ESP_LOGE(TAG, "failed to initialize pump...");
-        return;
+    ESP_LOGI(TAG, "initializing pumps");
+    for (int i = 0; i < app_cfg.channel_count; i++) {
+        pump_t p = {
+            .in1_pin = app_cfg.channels[i].pump_in1_pin,
+            .in2_pin = app_cfg.channels[i].pump_in2_pin,
+        };
+        ret = pump_init(app_cfg.mosfet_pin, &p);
+        if (ret != ESP_OK){
+            ESP_LOGE(TAG, "failed to initialize pump...");
+            return;
+        }
     }
+
+    init_control_task(&app_cfg);
 
     while (1) {
 
