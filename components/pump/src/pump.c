@@ -33,9 +33,14 @@ esp_err_t pump_off(pump_t *pump)
   return ESP_OK;
 }
 
-esp_err_t mosfet_off(uint8_t mosfet_pin) 
+esp_err_t mosfet_off(uint8_t pin) 
 {
-return gpio_set_level(mosfet_pin, 0);
+return gpio_set_level(pin, 0);
+}
+
+esp_err_t mosfet_on(uint8_t pin) 
+{
+return gpio_set_level(pin, 1);
 }
 
 esp_err_t pump_init(uint8_t mosfet_pin, pump_t *pump) 

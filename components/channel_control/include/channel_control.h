@@ -26,6 +26,7 @@ typedef struct
   pump_state_t state;
   pump_fault_reason_t fault;
   pump_t *pump;
+  uint8_t mosfet_pin;
 
   uint8_t ms_sensor_pin;
   uint8_t profile_id;
