@@ -7,19 +7,15 @@
 
 #define TAG "pump"
 
-esp_err_t pump_drive(pump_t *pump, direction_t dir) 
+esp_err_t pump_drive(pump_t *pump) 
 {
   if (!(pump)) return ESP_ERR_INVALID_ARG;
 
-  uint8_t a1_level = 0;
-  uint8_t a2_level =1;
-  if (dir == DIR_REVERSE) {
-    a1_level = 1;
-    a2_level=0;
-  }
-
-  gpio_set_level(pump->in1_pin, a1_level);
-  gpio_set_level(pump->in2_pin, a2_level);
+  esp_err_t err;
+  err = gpio_set_level(pump->in1_pin, 0);
+  if (err != ESP_OK) {return err;}
+  err = gpio_set_level(pump->in2_pin, 1);
+  if (err != ESP_OK) {return err;}
   return ESP_OK;
 }
 
@@ -31,6 +27,20 @@ esp_err_t pump_off(pump_t *pump)
   gpio_set_level(pump->in2_pin, 0);
 
   return ESP_OK;
+}
+
+esp_err_t pump_test(pump_t *pump) 
+{
+  if (!pump) return ESP_ERR_INVALID_ARG;
+
+  esp_err_t ret;
+  ret = pump_drive(pump);
+  if (ret != ESP_OK) {
+    pump_off(pump);
+    return ret;
+  }
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  return pump_off(pump);
 }
 
 esp_err_t mosfet_off(uint8_t pin) 

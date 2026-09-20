@@ -53,17 +53,23 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   cfg->channel_count = 1;
   reservoir_config_t rs = {
     .enabled = 0, 
-    .echo_pin = 21, 
-    .trigger_pin = 20, 
-    .reservoir_depth_cm = 22
   };
   cfg->reservoir = rs;
+  reservoir_pressure_transducer_t pt_rs = {
+    .enabled = 1, 
+    .data_pin = 0, 
+    .dry_pressure = 495, 
+    .max_reservoir_pressure = 530
+  };
+  cfg->pt_reservoir = pt_rs;
   channel_config_t chan = {
    .enabled = 1, 
    .max_pump_run_time_ms = 1000 * 60 * 30, // 30 minutes
-   .ms_sensor_pin = 8, 
    .pump_in1_pin = 9, 
    .pump_in2_pin = 8, 
+   .ms_sensor_pin = 1, 
+   .ms_dry_reading = 3875, 
+   .ms_wet_reading = 1430, 
   };
   cfg->channels[0] = chan;
   cfg->mosfet_pin = 10;

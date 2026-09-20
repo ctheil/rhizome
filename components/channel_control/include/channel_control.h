@@ -6,7 +6,6 @@
 
 #pragma once
 
-extern pump_t **PUMP_CHANNELS;
 extern uint8_t NUM_CHANNELS;
 
 typedef struct {
@@ -25,11 +24,15 @@ typedef struct
   uint64_t override_expiry_ms;
   pump_state_t state;
   pump_fault_reason_t fault;
-  pump_t *pump;
+  pump_t pump;
   uint8_t mosfet_pin;
 
   uint8_t ms_sensor_pin;
+  uint16_t ms_wet_reading;
+  uint16_t ms_dry_reading;
   uint8_t profile_id;
+
+  SemaphoreHandle_t mu;
 
 } channel_runtime_t;
 

@@ -24,15 +24,16 @@ typedef struct {
 
 typedef enum {
   DIR_FORWARD, 
-  DIR_REVERSE
+  DIR_REVERS
 } direction_t;
 
 
 
 esp_err_t pump_init(uint8_t mosfet_pin, pump_t *pump);
 
-esp_err_t pump_drive(pump_t *pump, direction_t dir);
+esp_err_t pump_drive(pump_t *pump);
 esp_err_t pump_off(pump_t *pump);
+esp_err_t pump_test(pump_t *pump);
 esp_err_t mosfet_on(uint8_t pin);
 esp_err_t mosfet_off(uint8_t pin);
 

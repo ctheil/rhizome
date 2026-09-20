@@ -1,5 +1,6 @@
 #ifndef __RESERVOIR_SENSOR_H__
 #define __RESERVOIR_SENSOR_H__
+#pragma once
 
 #include <esp_err.h>
 #include <stdint.h>
@@ -16,7 +17,6 @@ typedef struct
   uint32_t res_depth_cm;
 } reservoir_sensor_t;
 
-extern reservoir_sensor_t *ONBOARD_RESERVOIR_SENSOR;
 
 typedef enum {
   RS_FAULT_NONE, 
@@ -103,6 +103,21 @@ esp_err_t rs_get_res_fill_percent(const reservoir_sensor_t *dev, uint8_t *percen
 
 
 void reservoir_get_status(reservoir_status_t *status);
+
+
+
+typedef enum {
+  RESERVOIR_UNKNOWN,
+  RESERVOIR_OK,
+  RESERVOIR_STALE,
+  RESERVOIR_EMPTY,
+  RESERVOIR_FAULT_UNKNOWN,
+} reservoir_level_t;
+
+char* reservoir_level_to_name(reservoir_level_t level);
+
+reservoir_level_t reservoir_sensor_get_level(void);
+void reservoir_sensor_init(uint8_t use_onboard_sensor, uint8_t data_pin, uint16_t dry_pressure, uint16_t full_pressure);
 
 
 

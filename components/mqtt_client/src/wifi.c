@@ -73,7 +73,9 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base, int32_t event_
     case (WIFI_EVENT_STA_DISCONNECTED): 
       ESP_LOGI(TAG, "wifi disconnected");
       if (s_retry_num < MAX_RETRY) {
-        ESP_LOGI(TAG, "retrying to connect to wifi...");
+        ESP_LOGI(TAG, "retrying to connect to wifi: attempt %d with backoff of %dMS", s_retry_num, s_retry_num * 500);
+        // BACKOFF
+        vTaskDelay(pdMS_TO_TICKS(s_retry_num * 500));
         esp_wifi_connect();
         s_retry_num++;
       } else {
@@ -89,6 +91,7 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base, int32_t event_
       break;
   }
 }
+
 esp_err_t wifi_init() 
 {
     s_wifi_event_group = xEventGroupCreate();
@@ -154,8 +157,17 @@ esp_err_t wifi_connect(char* wifi_ssid, char* wifi_password)
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
+
   ESP_LOGI(TAG, "connecting to wifi network: %s, pass: %s", wifi_config.sta.ssid, wifi_config.sta.password);
   ESP_ERROR_CHECK(esp_wifi_start());
+
+    // 34 represents 8.5 dBm (8.5 * 4 = 34)
+    int8_t max_tx_power = 34; 
+    ESP_LOGI(TAG, "setting wifi power to 8.5dbms");
+    esp_err_t ret = esp_wifi_set_max_tx_power(max_tx_power);
+    if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "failed to set wifi power: %s; continuing...", esp_err_to_name(ret));
+    }
 
   EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
 

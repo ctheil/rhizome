@@ -8,6 +8,10 @@
 #include "esp_err.h"
 #include "pump.h"
 
+/**
+ * @brief v1 ultrasonic reservoir sensor config
+ * 
+ */
 typedef struct
 {
   uint8_t enabled;
@@ -15,6 +19,18 @@ typedef struct
   uint8_t trigger_pin;
   uint16_t reservoir_depth_cm;
 } reservoir_config_t;
+
+/**
+ * @brief v2 pressure transducer sensor config
+ * 
+ */
+typedef struct
+{
+  uint8_t enabled;
+  uint8_t data_pin;
+  uint16_t dry_pressure;
+  uint16_t max_reservoir_pressure;
+} reservoir_pressure_transducer_t;
 
 typedef struct 
 {
@@ -24,6 +40,8 @@ typedef struct
   uint64_t max_pump_run_time_ms;
 
   uint8_t ms_sensor_pin;
+  uint16_t ms_dry_reading;
+  uint16_t ms_wet_reading;
 } channel_config_t;
 
 #define MAX_CHANNELS 2
@@ -33,6 +51,7 @@ typedef struct
   uint8_t schema_version;
   uint8_t channel_count;
   reservoir_config_t reservoir;
+  reservoir_pressure_transducer_t pt_reservoir;
   channel_config_t channels[MAX_CHANNELS];
   uint8_t mosfet_pin;
   char *wifi_ssid;
