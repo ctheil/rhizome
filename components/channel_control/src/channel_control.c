@@ -166,17 +166,6 @@ static void vChannelControlTask(void *arg)
     // // poll moisture sensor per channel (one per pump) for adequate moisture given the channel's profile
     // loop over each channel and check in on state
     for (uint8_t i = 0; i < NUM_CHANNELS; i++) {
-      xSemaphoreTake(CHANNELS[i]->mu, portMAX_DELAY);
-      uint64_t override_expiry_ms = CHANNELS[i]->override_expiry_ms;
-      pump_state_t state = CHANNELS[i]->state;
-      xSemaphoreGive(CHANNELS[i]->mu);
-      TickType_t current_time_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-      if(current_time_ms >= override_expiry_ms && state == PUMP_WATERING)
-      {
-        ESP_LOGI(TAG, "pump hit runtime expiry. turning off");
-        change_pump_state(CHANNELS[i], PUMP_IDLE);
-      }
-
       esp_err_t err;
       uint32_t avg;
       err = analog_burst_read(CHANNELS[i]->ms_sensor_pin, &avg, 15, 10);
@@ -188,7 +177,7 @@ static void vChannelControlTask(void *arg)
       ESP_LOGD(TAG, "moisture sensor burst read: %d; dry percentage: %d", avg, dry_percentage);
 
       xSemaphoreTake(CHANNELS[i]->mu, portMAX_DELAY);
-      state = CHANNELS[i]->state;
+      pump_state_t state = CHANNELS[i]->state;
       xSemaphoreGive(CHANNELS[i]->mu);
 
       if (dry_percentage >= 50 && state != PUMP_WATERING) {
