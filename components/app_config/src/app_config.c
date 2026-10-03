@@ -75,6 +75,9 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   cfg->mosfet_pin = 10;
   cfg->wifi_ssid = "Brickhouse";
   cfg->wifi_password = "Br1ckHous3";
+  cfg->mqtt_broker_uri =  "mqtt://192.168.0.57:1883";
+  cfg->mqtt_username =  "rhizome";
+  cfg->mqtt_password =  "123456789";
 
   return ESP_OK;
 }

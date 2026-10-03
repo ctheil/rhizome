@@ -11,6 +11,7 @@
 #include "nvs_flash.h"
 #include "app_config.h"
 #include "stdlib.h"
+#include "app_mqtt.h"
 
 #define TAG "main"
 
@@ -42,30 +43,34 @@ void app_main(void)
         return;
     }
 
-    ESP_LOGI(TAG, "initializing pumps");
-    for (int i = 0; i < app_cfg.channel_count; i++) {
-        if (!app_cfg.channels[i].enabled) {
-            ESP_LOGI(TAG, "Channel disabled. continuing...");
-            continue;
-        }
-        pump_t p = {
-            .in1_pin = app_cfg.channels[i].pump_in1_pin,
-            .in2_pin = app_cfg.channels[i].pump_in2_pin,
-        };
-        ret = pump_init(app_cfg.mosfet_pin, &p);
-        if (ret != ESP_OK){
-            ESP_LOGE(TAG, "failed to initialize pump: %s", esp_err_to_name(ret));
-            return;
-        }
-    }
+    esp_log_level_set("app_mqtt", ESP_LOG_VERBOSE);
+    ESP_LOGI(TAG, "initialing mqtt app");
+    mqtt_app_start(&app_cfg);
 
-    ESP_LOGI(TAG, "stating channel control task");
-    esp_log_level_set("channel_control", ESP_LOG_VERBOSE);
-    esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
-    ret = init_control_task(&app_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "failed to init control task");
-        return ;
-    }
+    // ESP_LOGI(TAG, "initializing pumps");
+    // for (int i = 0; i < app_cfg.channel_count; i++) {
+    //     if (!app_cfg.channels[i].enabled) {
+    //         ESP_LOGI(TAG, "Channel disabled. continuing...");
+    //         continue;
+    //     }
+    //     pump_t p = {
+    //         .in1_pin = app_cfg.channels[i].pump_in1_pin,
+    //         .in2_pin = app_cfg.channels[i].pump_in2_pin,
+    //     };
+    //     ret = pump_init(app_cfg.mosfet_pin, &p);
+    //     if (ret != ESP_OK){
+    //         ESP_LOGE(TAG, "failed to initialize pump: %s", esp_err_to_name(ret));
+    //         return;
+    //     }
+    // }
+
+    // ESP_LOGI(TAG, "stating channel control task");
+    // esp_log_level_set("channel_control", ESP_LOG_VERBOSE);
+    // esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
+    // ret = init_control_task(&app_cfg);
+    // if (ret != ESP_OK) {
+    //     ESP_LOGE(TAG, "failed to init control task");
+    //     return ;
+    // }
     while(1) {vTaskDelay(pdMS_TO_TICKS(500));}
 }
