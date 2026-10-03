@@ -34,16 +34,20 @@ void app_main(void)
         return;
     }
 
-    // ESP_LOGI(TAG, "initializing wifi");
-    // ESP_ERROR_CHECK(wifi_init());
-    // ret = wifi_connect(app_cfg.wifi_ssid, app_cfg.wifi_password);
-    // if (ret != ESP_OK) {
-    //     ESP_LOGE(TAG, "failed to initialize wifi...");
-    //     return;
-    // }
+    ESP_LOGI(TAG, "initializing wifi");
+    ESP_ERROR_CHECK(wifi_init());
+    ret = wifi_connect(app_cfg.wifi_ssid, app_cfg.wifi_password);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "failed to initialize wifi...");
+        return;
+    }
 
     ESP_LOGI(TAG, "initializing pumps");
     for (int i = 0; i < app_cfg.channel_count; i++) {
+        if (!app_cfg.channels[i].enabled) {
+            ESP_LOGI(TAG, "Channel disabled. continuing...");
+            continue;
+        }
         pump_t p = {
             .in1_pin = app_cfg.channels[i].pump_in1_pin,
             .in2_pin = app_cfg.channels[i].pump_in2_pin,
@@ -57,7 +61,7 @@ void app_main(void)
 
     ESP_LOGI(TAG, "stating channel control task");
     esp_log_level_set("channel_control", ESP_LOG_VERBOSE);
-    // esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
+    esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
     ret = init_control_task(&app_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to init control task");

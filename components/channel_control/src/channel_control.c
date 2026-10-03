@@ -23,7 +23,6 @@ static void all_pumps_off(pump_fault_reason_t fault_reason) {
         pump_off(&CHANNELS[i]->pump);
         CHANNELS[i]->fault = fault_reason;
         CHANNELS[i]->state = PUMP_FAULT;
-        // fallback and turn off via gpio manually?
       }
 }
 
@@ -136,18 +135,21 @@ esp_err_t change_pump_state(channel_runtime_t *ch, pump_state_t new_state)
   }
 }
 
+int to_wait_ms = 2000;
+#define task_continue {vTaskDelay(pdMS_TO_TICKS(to_wait_ms)); continue;}
+
 static void vChannelControlTask(void *arg) 
 {
   channel_queue_msg_t msg; // queue item
-  int to_wait_ms = 2000;
   const TickType_t xTicksToWait = pdMS_TO_TICKS(to_wait_ms);
 
   while (1) {
     // first check reservoir status and continue if !OK
     reservoir_level_t level = reservoir_handler();
     if (level != RESERVOIR_OK) {
-      ESP_LOGE(TAG, "reservoir fault. cannot proceed");
+      ESP_LOGE(TAG, "reservoir fault. cannot proceed: %s", reservoir_level_to_name(level));
       all_pumps_off(RESERVOIR_EMPTY);
+      task_continue;
     }
     
 
@@ -157,8 +159,7 @@ static void vChannelControlTask(void *arg)
       err = controlTaskMsgHandler(&msg);
       if (err != ESP_OK) {
         ESP_LOGE(TAG, "failed to handle message");
-        vTaskDelay(pdMS_TO_TICKS(to_wait_ms));
-        continue;
+        task_continue;
       }
     }
 
@@ -178,8 +179,11 @@ static void vChannelControlTask(void *arg)
 
       xSemaphoreTake(CHANNELS[i]->mu, portMAX_DELAY);
       pump_state_t state = CHANNELS[i]->state;
+      uint32_t start = CHANNELS[i]->start_time_ms;
+      uint32_t pre_water_moisture = CHANNELS[i]->pre_water_moisture;
       xSemaphoreGive(CHANNELS[i]->mu);
 
+      // check time elapsed and cmp pre-water-moisture to current - fault water without effect 
       if (dry_percentage >= 50 && state != PUMP_WATERING) {
         ESP_LOGI(TAG, "channel is %d%% dry; starting pump", dry_percentage);
         err = change_pump_state(CHANNELS[i], PUMP_WATERING);

@@ -34,13 +34,6 @@ char* reservoir_level_to_name(reservoir_level_t level) {
   }
 }
 
-uint8_t is_within_jitter(int x, int y, int jitter) 
-{
-  int high = y + jitter;
-  int low = y - jitter;
-  return x >= low && x <= high;
-}
-
 reservoir_level_t classify(int raw_reading) {
   if (raw_reading < 5 || raw_reading > INT_MAX) {
     ESP_LOGW(TAG, "result is below or above sensor thresholds: %d", raw_reading);
@@ -68,18 +61,18 @@ reservoir_level_t reservoir_sensor_get_level(void)
   }
 
   reservoir_level_t level;
+  uint32_t avg = 0;
   xSemaphoreTake(sensor_mutex, portMAX_DELAY);
   uint32_t now = xTaskGetTickCount();
   if (now - last_read_tick > STALE_THRESHOLD) {
     level = RESERVOIR_STALE;
   } else {
-    uint32_t avg = reads_sum / reads_count;
+    avg = reads_sum / reads_count;
     reads_sum = reads_count = 0; // reset
     level = classify(avg);
-    ESP_LOGI(TAG, "external request for level. last_read: %d; avg: %d, level: %s", onboard_sensor_raw, avg, reservoir_level_to_name(level));
-    // level = cached_level;
   } 
   xSemaphoreGive(sensor_mutex);
+  ESP_LOGD(TAG, "external request for level. last_read: %d; avg: %d, level: %s", onboard_sensor_raw, avg, reservoir_level_to_name(level));
   return level;
 }
 

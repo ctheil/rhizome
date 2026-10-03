@@ -7,7 +7,7 @@
 #include "freertos/task.h"
 
 
-#define MS_TAG "moisture_sensor"
+#define TAG "moisture_sensor"
 //ADC Channels
 
 void ms_get_reading(uint8_t channel, int *result) 
@@ -107,7 +107,7 @@ uint8_t moisture_sensor_get_level(uint8_t pin)
     uint16_t avg = reads_sum / reads_count;
     reads_sum = reads_count = 0; // reset
     level = classify(avg);
-    ESP_LOGI(TAG, "external request for level. last_read: %d; avg: %d, moisture_percentage: %s", raw_reading, avg, perc);
+    ESP_LOGD(TAG, "external request for level. last_read: %d; avg: %d, moisture_percentage: %s", raw_reading, avg, perc);
   } 
   xSemaphoreGive(sensor_mutex);
   return level;
