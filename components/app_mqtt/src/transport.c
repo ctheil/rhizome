@@ -134,3 +134,8 @@ void mqtt_app_start(config_t *cfg)
 void transport_subscribe(char* topic, uint8_t qos) {
     esp_mqtt_client_subscribe(client, topic, qos);
 }
+
+void transport_publish(char *topic, char* data, int len, int qos, int retain) {
+    ESP_LOGD(TAG, "publishing message");
+  esp_mqtt_client_enqueue(client, topic, data, len, qos, retain, true);
+}

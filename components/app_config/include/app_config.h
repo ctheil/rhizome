@@ -87,5 +87,6 @@ typedef struct
 
 // esp_err_t get_default_config(config_t *cfg);
 esp_err_t get_config(config_t *cfg);
+void init_config(void);
 
 #endif /* __APP_CONFIG_H__ */

@@ -30,6 +30,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     config_t app_cfg;
+    init_config();
     ret = get_config(&app_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to get config...");

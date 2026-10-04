@@ -5,8 +5,10 @@
 #include "analog_read.h"
 #include "math.h"
 #include "router.h"
+#include "transport.h"
 #include "cJSON.h"
 #include "soc/clk_tree_defs.h"
+#include <sys/time.h>
 
 #define TAG "reservoir_sensor"
 
@@ -136,12 +138,34 @@ static void poll_sensor(void) {
     ESP_LOGV(TAG, "raw reading: %d from %d; Standard Deviation: %d;", onboard_sensor_raw, last_read_tick, sd);
 }
 
+void publish_rs_level() {
+  cJSON *root = cJSON_CreateObject();
+
+  cJSON_AddNumberToObject(root, "level", cached_level);
+  struct timeval tv_now;
+  if (gettimeofday(&tv_now, NULL) == 0) {
+      int64_t time_us = (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
+      cJSON_AddNumberToObject(root, "timestamp", time_us);
+  }
+
+  char *payload = cJSON_Print(root);
+  if (payload != NULL) {
+    ESP_LOGD(TAG, "publishing ota reservoir level");
+    transport_publish("rhizome/g01/reservoir-level", payload, 0, 1, 1);
+    cJSON_free(payload);
+  } else {
+    ESP_LOGE(TAG, "failed to marshal json");
+  }
+  cJSON_Delete(root);
+}
+
 static void sensor_poll_task(void *arg) 
 {
   while (1)
   {
     poll_sensor();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    publish_rs_level();
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
   vTaskDelete(NULL);
 }
