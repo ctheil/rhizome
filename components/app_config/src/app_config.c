@@ -56,7 +56,7 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   };
   cfg->reservoir = rs;
   reservoir_pressure_transducer_t pt_rs = {
-    .enabled = 1, 
+    .enabled = 0, 
     .data_pin = 0, 
     .dry_pressure = 495, 
     .max_reservoir_pressure = 530

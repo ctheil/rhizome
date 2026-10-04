@@ -1,4 +1,4 @@
-#include "app_mqtt.h"
+#include "transport.h"
 #include "app_config.h"
 
 #include <stdio.h>
@@ -13,9 +13,10 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include "router.h"
 
 
-#define TAG "app_mqtt"
+#define TAG "transport"
 
 static void log_error_if_nonzero(char *message, int error_code)
 {
@@ -24,28 +25,37 @@ static void log_error_if_nonzero(char *message, int error_code)
   }
 }
 
+static esp_err_t (*sink)(Sink_Message_t) = NULL;
+void transport_init(esp_err_t (*_sink)(Sink_Message_t)) 
+{
+    sink = _sink;
+}
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
   ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%", PRIi32 "", base, event_id);
   esp_mqtt_event_handle_t event = event_data;
   esp_mqtt_client_handle_t client = event->client;
   int msg_id;
+  Sink_Message_t sink_event;
 
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-        msg_id = esp_mqtt_client_subscribe(client, "topic/qos0", 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        msg_id = esp_mqtt_client_subscribe(client, "topic/qos1", 1);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        msg_id = esp_mqtt_client_unsubscribe(client, "topic/qos1");
-        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED. Subscribing to topics");
+        if (sink == NULL) {
+            ESP_LOGE(TAG, "no initalized sink");
+            break;
+        }
+
+        sink_event.event_type = EVENT_CONNECTED;
+        sink(sink_event);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+
+        sink_event.event_type = EVENT_DISCONNECTED;
+        sink(sink_event);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -64,8 +74,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
+
+        sink_event.event_type = EVENT_MESSAGE;
+        sink_event.topic = event->topic;
+        sink_event.topic_len = event->topic_len;
+        sink_event.payload = event->data;
+        sink_event.payload_len = event->data_len;
+        sink(sink_event);
         break;
 
     case MQTT_EVENT_ERROR:
@@ -86,6 +101,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+
+
+  static esp_mqtt_client_handle_t client;
 void mqtt_app_start(config_t *cfg)
 {
   // esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
@@ -105,10 +123,14 @@ void mqtt_app_start(config_t *cfg)
   };
 
   ESP_LOGD(TAG, "init client");
-  esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+  client = esp_mqtt_client_init(&mqtt_cfg);
 
   ESP_LOGD(TAG, "register callback");
   esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
   ESP_LOGD(TAG, "start client");
   esp_mqtt_client_start(client);
+}
+
+void transport_subscribe(char* topic, uint8_t qos) {
+    esp_mqtt_client_subscribe(client, topic, qos);
 }

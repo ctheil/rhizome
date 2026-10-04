@@ -209,8 +209,6 @@ static void vChannelControlTask(void *arg)
 
 esp_err_t init_control_task(config_t *cfg) {
 
-  reservoir_sensor_init(cfg->pt_reservoir.enabled, cfg->pt_reservoir.data_pin, cfg->pt_reservoir.dry_pressure, cfg->pt_reservoir.max_reservoir_pressure);
-
   NUM_CHANNELS = cfg->channel_count;
   CHANNELS = calloc(NUM_CHANNELS, sizeof(*CHANNELS));
   if (CHANNELS == NULL) {

@@ -4,11 +4,15 @@
 #include <stdint.h>
 #include "analog_read.h"
 #include "math.h"
+#include "router.h"
+#include "cJSON.h"
+#include "soc/clk_tree_defs.h"
 
 #define TAG "reservoir_sensor"
 
 SemaphoreHandle_t sensor_mutex;
 reservoir_level_t cached_level = RESERVOIR_UNKNOWN;
+char* last_ota_update = NULL;
 uint32_t last_read_tick = UINT32_MAX;
 #define STALE_THRESHOLD 10000
 static uint32_t onboard_sensor_raw;
@@ -56,8 +60,8 @@ reservoir_level_t classify(int raw_reading) {
 reservoir_level_t reservoir_sensor_get_level(void) 
 {
   if (!is_initialized) {
-    ESP_LOGE(TAG, "No onbaord sensor. Cannot determine reservoir sensor");
-    return RESERVOIR_UNKNOWN;
+    ESP_LOGD(TAG, "returning cached ota level");
+    return cached_level;
   }
 
   reservoir_level_t level;
@@ -142,6 +146,33 @@ static void sensor_poll_task(void *arg)
   vTaskDelete(NULL);
 }
 
+void ota_rs_cb(char* payload, uint16_t len) {
+  ESP_LOGD(TAG, "oat reservoir sensor update: %s", payload);
+
+  char json_string[len];
+  strncpy(json_string, payload, len);
+
+  cJSON *root = cJSON_Parse(json_string);
+  if (root == NULL) {
+    ESP_LOGE(TAG, "ota_rs_cb: failed to parse payload to json");
+    return;
+  }
+
+  cJSON *timestamp = cJSON_GetObjectItem(root, "timestamp");
+  if (cJSON_IsString(timestamp) && (timestamp->valuestring != NULL)) {
+    ESP_LOGD(TAG, "ota update timestamp: %s", timestamp->valuestring);
+    last_ota_update = timestamp->valuestring;
+  }
+
+  cJSON *level = cJSON_GetObjectItem(root, "level");
+  if (cJSON_IsNumber(level)) {
+    ESP_LOGD(TAG, "ota update level: %s", reservoir_level_to_name(level->valueint));
+    cached_level = level->valueint;
+  }
+
+  cJSON_Delete(root);
+}
+
 void reservoir_sensor_init(uint8_t use_onboard_sensor, uint8_t data_pin, uint16_t _dry_pressure, uint16_t _max_pressure) 
 {
   ESP_LOGD(TAG, "global init pressure transducer reservoir sensor");
@@ -154,5 +185,8 @@ void reservoir_sensor_init(uint8_t use_onboard_sensor, uint8_t data_pin, uint16_
   cached_level = RESERVOIR_UNKNOWN;
 
   xTaskCreate(sensor_poll_task, "pressure_transducer_reservoir_sensor_poll_task", 2048, NULL, 0, NULL);
+  } else {
+    ESP_LOGD(TAG, "no onboard sensor. registering ota callback");
+    register_subscription("rhizome/g01/reservoir-sensor", 1, ota_rs_cb);
   }
 }
