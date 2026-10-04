@@ -3,6 +3,7 @@
 #include "nvs.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "router.h"
 
 #define TAG "config"
 #define PART "nvs"
@@ -24,28 +25,6 @@ esp_err_t get_config_from_nvs(config_t *cfg, nvs_handle_t handle) {
 }
 
 
-/*
- {
-  "schema_version": 1,
-  "channel_count": 1,
-  "reservoir": {
-    "enabled": 1, 
-    "echo_pin": 21, 
-    "trigger_pin": 20, 
-    "reservoir_depth_cm": 23
-  },
-  "channels": [
-    {
-      "enabled": 1, 
-      "pump_in1_pin": 20, 
-      "pump_in2_pin": 21,
-      "pump_max_run_time_ms": 6000,
-      "ms_sensor_pin": 8
-    }
-  ], 
-  "mosfet_pin": 10
-}
-*/
 esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   esp_err_t err;
 
@@ -75,10 +54,20 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   cfg->mosfet_pin = 10;
   cfg->wifi_ssid = "Brickhouse";
   cfg->wifi_password = "Br1ckHous3";
+  cfg->mqtt_broker_uri =  "mqtt://192.168.0.57:1883";
+  cfg->mqtt_username =  "rhizome";
+  cfg->mqtt_password =  "123456789";
 
   return ESP_OK;
 }
 
+void ota_cfg_cb(char* payload, uint16_t len) {
+  ESP_LOGI(TAG, "ota post config");
+}
+void init_config(void)
+{
+  register_subscription("rhizome/d01/post-config", 0, ota_cfg_cb);
+}
 esp_err_t get_config(config_t *cfg) 
 {
     // Open NVS handle

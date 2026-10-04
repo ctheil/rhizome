@@ -56,6 +56,9 @@ typedef struct
   uint8_t mosfet_pin;
   char *wifi_ssid;
   char *wifi_password;
+  char *mqtt_broker_uri;
+  char *mqtt_username;
+  char *mqtt_password;
 } config_t;
 
 
@@ -84,5 +87,6 @@ typedef struct
 
 // esp_err_t get_default_config(config_t *cfg);
 esp_err_t get_config(config_t *cfg);
+void init_config(void);
 
 #endif /* __APP_CONFIG_H__ */

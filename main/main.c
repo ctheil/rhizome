@@ -11,6 +11,8 @@
 #include "nvs_flash.h"
 #include "app_config.h"
 #include "stdlib.h"
+#include "transport.h"
+#include "router.h"
 
 #define TAG "main"
 
@@ -28,11 +30,34 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     config_t app_cfg;
+    init_config();
     ret = get_config(&app_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to get config...");
         return;
     }
+
+
+    // ESP_LOGI(TAG, "initializing pumps");
+    // for (int i = 0; i < app_cfg.channel_count; i++) {
+    //     if (!app_cfg.channels[i].enabled) {
+    //         ESP_LOGI(TAG, "Channel disabled. continuing...");
+    //         continue;
+    //     }
+    //     pump_t p = {
+    //         .in1_pin = app_cfg.channels[i].pump_in1_pin,
+    //         .in2_pin = app_cfg.channels[i].pump_in2_pin,
+    //     };
+    //     ret = pump_init(app_cfg.mosfet_pin, &p);
+    //     if (ret != ESP_OK){
+    //         ESP_LOGE(TAG, "failed to initialize pump: %s", esp_err_to_name(ret));
+    //         return;
+    //     }
+    // }
+
+    ESP_LOGI(TAG, "initializing reservoir sensor");
+    esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
+    reservoir_sensor_init(app_cfg.pt_reservoir.enabled, app_cfg.pt_reservoir.data_pin, app_cfg.pt_reservoir.dry_pressure, app_cfg.pt_reservoir.max_reservoir_pressure);
 
     ESP_LOGI(TAG, "initializing wifi");
     ESP_ERROR_CHECK(wifi_init());
@@ -42,26 +67,18 @@ void app_main(void)
         return;
     }
 
-    ESP_LOGI(TAG, "initializing pumps");
-    for (int i = 0; i < app_cfg.channel_count; i++) {
-        if (!app_cfg.channels[i].enabled) {
-            ESP_LOGI(TAG, "Channel disabled. continuing...");
-            continue;
-        }
-        pump_t p = {
-            .in1_pin = app_cfg.channels[i].pump_in1_pin,
-            .in2_pin = app_cfg.channels[i].pump_in2_pin,
-        };
-        ret = pump_init(app_cfg.mosfet_pin, &p);
-        if (ret != ESP_OK){
-            ESP_LOGE(TAG, "failed to initialize pump: %s", esp_err_to_name(ret));
-            return;
-        }
-    }
+    esp_log_level_set("transport", ESP_LOG_VERBOSE);
+    esp_log_level_set("router", ESP_LOG_VERBOSE);
+    ESP_LOGI(TAG, "initialing router");
+    router_init();
+    ESP_LOGI(TAG, "initialing transport");
+    transport_init(router_sink);
 
-    ESP_LOGI(TAG, "stating channel control task");
-    esp_log_level_set("channel_control", ESP_LOG_VERBOSE);
-    esp_log_level_set("reservoir_sensor", ESP_LOG_VERBOSE);
+    ESP_LOGI(TAG, "initialing mqtt app");
+    mqtt_app_start(&app_cfg);
+
+    // ESP_LOGI(TAG, "stating channel control task");
+    // esp_log_level_set("channel_control", ESP_LOG_VERBOSE);
     ret = init_control_task(&app_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to init control task");
