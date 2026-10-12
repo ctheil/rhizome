@@ -13,13 +13,10 @@ typedef struct {
   uint32_t timeout_ms;
   uint8_t ch;
 } channel_queue_msg_t;
-typedef struct {
-  uint16_t id;
-} profile_t;
 typedef struct
 {
   uint64_t start_time_ms;
-  uint32_t pre_water_moisture; // for pump-without-effect detection
+  uint32_t pre_water_dry; // for pump-without-effect detection
   bool override_active;
   uint64_t override_expiry_ms;
   pump_state_t state;
@@ -27,10 +24,12 @@ typedef struct
   pump_t pump;
   uint8_t mosfet_pin;
 
+  uint8_t ms_dry_percentage;
+  uint32_t ms_raw_reading;
   uint8_t ms_sensor_pin;
   uint16_t ms_wet_reading;
   uint16_t ms_dry_reading;
-  uint8_t profile_id;
+  profile_t *profile;
 
   SemaphoreHandle_t mu;
 

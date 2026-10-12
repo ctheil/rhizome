@@ -16,6 +16,8 @@ typedef enum {
   FAULT_SENSOR_OUT_OF_RANGE,
 } pump_fault_reason_t;
 
+char* pump_fault_to_str(pump_fault_reason_t fault);
+
 typedef struct {
     uint8_t in1_pin;
     uint8_t in2_pin;

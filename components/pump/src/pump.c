@@ -86,3 +86,19 @@ esp_err_t pump_init(uint8_t mosfet_pin, pump_t *pump)
 
   return ESP_OK;
 }
+char* pump_fault_to_str(pump_fault_reason_t fault) {
+  switch (fault) {
+  case FAULT_NONE: 
+    return "FAULT_NONE";
+  case FAULT_RESERVOIR_DRY: 
+    return "FAULT_RESERVOIR_DRY";
+  case FAULT_RESERVOIR_FAULT:
+    return "FAULT_RESERVOIR_FAULT";
+  case FAULT_PUMP_WITHOUT_EFFECT: 
+    return "FAULT_PUMP_WITHOUT_EFFECT";
+  case FAULT_SENSOR_OUT_OF_RANGE: 
+    return "FAULT_SENSOR_OUT_OF_RANGE";
+  default: 
+    return "FAULT_UNKNOWN";
+  }
+}

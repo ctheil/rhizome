@@ -8,6 +8,19 @@
 #include "esp_err.h"
 #include "pump.h"
 
+typedef struct
+{
+  char *name;
+  uint8_t dry_trigger_threshold;   // dry threshold to trigger watering
+  uint8_t wet_trigger_threshold; // wet threshold to stop watering
+  uint32_t pump_without_effect_ms; // time (ms) to trigger FAULT_PUMP_WITHOUT_EFFECT
+  uint32_t max_pump_time_ms;       // max time to pump before safety shutoff
+} profile_t;
+
+#define NUM_PROFILES 1
+
+extern profile_t profile_fiddle_leaf_fig;
+
 /**
  * @brief v1 ultrasonic reservoir sensor config
  * 
@@ -42,6 +55,8 @@ typedef struct
   uint8_t ms_sensor_pin;
   uint16_t ms_dry_reading;
   uint16_t ms_wet_reading;
+
+  profile_t *profile;
 } channel_config_t;
 
 #define MAX_CHANNELS 2

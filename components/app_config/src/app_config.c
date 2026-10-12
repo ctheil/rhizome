@@ -10,6 +10,15 @@
 #define STORAGE_NAMESPACE "storage"
 
 
+profile_t profile_fiddle_leaf_fig = {
+    .name = "fiddle leaf fig",
+    .dry_trigger_threshold = 70,
+    .wet_trigger_threshold = 25,
+    .pump_without_effect_ms = 120000, // 2 minutes
+    .max_pump_time_ms = 1200000       // 20 minutes
+};
+
+
 esp_err_t get_config_from_nvs(config_t *cfg, nvs_handle_t handle) {
   esp_err_t err;
 
@@ -35,9 +44,9 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
   };
   cfg->reservoir = rs;
   reservoir_pressure_transducer_t pt_rs = {
-    .enabled = 1, 
+    .enabled = 0, 
     .data_pin = 0, 
-    .dry_pressure = 495, 
+    .dry_pressure = 485, 
     .max_reservoir_pressure = 530
   };
   cfg->pt_reservoir = pt_rs;
@@ -49,6 +58,7 @@ esp_err_t write_default_config(config_t *cfg, nvs_handle_t handle) {
    .ms_sensor_pin = 1, 
    .ms_dry_reading = 3875, 
    .ms_wet_reading = 1430, 
+   .profile = &profile_fiddle_leaf_fig
   };
   cfg->channels[0] = chan;
   cfg->mosfet_pin = 10;
